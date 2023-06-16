@@ -15,7 +15,7 @@
 
 from PySide6.QtWidgets import QMainWindow,QCheckBox,QSizePolicy,QPushButton,\
                               QLabel,QHBoxLayout,QSpacerItem,QTimeEdit,\
-                              QVBoxLayout,QWidget,QFileDialog, QListWidget, QFrame
+                              QVBoxLayout,QWidget,QFileDialog, QListWidget, QFrame, QLineEdit
 from PySide6.QtCore import QTime,QTimer,QThreadPool,Qt
 from PySide6.QtGui import QCloseEvent
 from pyqtgraph import AxisItem,PlotWidget,DateAxisItem
@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
         frame.setLayout(savelayout)
 
         self.timercheck = QCheckBox('Set timer')
-        self.timercheck.setStyleSheet('font-size:24px')
+        self.timercheck.setStyleSheet('font-size:20px')
         self.timercheck.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
         self.timercheck.stateChanged.connect(self.timercheckstatechanged)
 
@@ -87,25 +87,35 @@ class MainWindow(QMainWindow):
         self.timerbox.setDisplayFormat('hh:mm:ss')
         self.timerbox.setMinimumTime(QTime(0,0,1))
         self.timerbox.setFixedSize(130,50)
-        self.timerbox.setStyleSheet('font-size:24px')
+        self.timerbox.setStyleSheet('font-size:20px')
         self.timerbox.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
         self.timerbox.setEnabled(False)
         self.timerbox.timeChanged.connect(self.timerchanged)
 
         self.remainingtime = QLabel()
-        self.remainingtime.setStyleSheet('font-size:24px')
+        self.remainingtime.setStyleSheet('font-size:20px')
 
         timelayout = QHBoxLayout()
+        timelayout.addWidget(self.timercheck)
         timelayout.addWidget(self.timerbox)
         timelayout.addWidget(self.remainingtime)
-        timelayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))
+        timelayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))     
 
         self.frequencyplot = PlotWidget(axisItems={'bottom':DateAxisItem(),'left': FrequencyAxisItem(orientation='left')})
         self.frequencyplot.showGrid(x=True,y=True)
         self.frequencyplot.setTitle('Frequency [Hz]')
         self.frequencyx = []
         self.frequencyy = []
-        self.frequencyline = self.frequencyplot.plot(self.frequencyx,self.frequencyy)
+        self.frequencyline = self.frequencyplot.plot(self.frequencyx,self.frequencyy)        
+        self.frequencyplot.autoPixelRange(True)
+        self.scaleaxis = QLabel()
+        self.scaleaxis.setText("Scale Axis")
+        self.scaleaxis.setStyleSheet("color:white")
+        self.scaleresistancexaxis = QCheckBox()
+        self.scaleresistancexaxis.clicked.connect(self.scalexresistance)
+        self.xresvalue = QLineEdit()
+        self.yresvalue = QLineEdit()
+
 
         self.resistanceplot = PlotWidget(axisItems={'bottom':DateAxisItem()})
         self.resistanceplot.showGrid(x=True,y=True)
@@ -121,28 +131,29 @@ class MainWindow(QMainWindow):
 
         self.startbutton = QPushButton('START')
         self.startbutton.setFixedSize(100,50)
-        self.startbutton.setStyleSheet('font-size:24px;font-weight:bold;color:blue')
+        self.startbutton.setStyleSheet('font-size:22px;font-weight:semibold;color:darkgreen')
         self.startbutton.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
-        #self.startbutton.setEnabled(False)
+        self.startbutton.setEnabled(False)
         self.startbutton.clicked.connect(self.startmeasurement)
 
         self.stopbutton = QPushButton('STOP')
         self.stopbutton.setFixedSize(100,50)
-        self.stopbutton.setStyleSheet('font-size:24px;font-weight:bold;color:red')
+        self.stopbutton.setStyleSheet('font-size:22px;font-weight:semibold;color:darkred')
         self.stopbutton.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
         self.stopbutton.setEnabled(False)
         self.stopbutton.clicked.connect(self.stopmeasurement)
 
-        buttonlayout = QVBoxLayout()
+        buttonlayout = QHBoxLayout()
+        buttonlayout.addLayout(timelayout)
         buttonlayout.addWidget(self.startbutton)
         buttonlayout.addWidget(self.stopbutton)
 
         self.connectedlabel = QLabel('Device not connected')
-        self.connectedlabel.setStyleSheet('font-size:24px;color:red;font-weight:bold')
+        self.connectedlabel.setStyleSheet('font-size:20px;color:darkred;font-weight:bold')
         self.connectedlabel.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
 
         self.measurelabel = QLabel('Measurement stopped')
-        self.measurelabel.setStyleSheet('font-size:24px;color:red;font-weight:bold')
+        self.measurelabel.setStyleSheet('font-size:20px;color:darkred;font-weight:bold')
         self.measurelabel.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
 
         labellayout = QVBoxLayout()
@@ -150,15 +161,18 @@ class MainWindow(QMainWindow):
         labellayout.addWidget(self.measurelabel)
 
         bottomlayout = QHBoxLayout()
+        bottomlayout.addLayout(timelayout)
         bottomlayout.addLayout(buttonlayout)
         bottomlayout.addLayout(labellayout)
+        bottomframe = QFrame()
+        bottomframe.setStyleSheet("background-color: lightgrey;")
+        bottomframe.setFrameStyle(1)
+        bottomframe.setLayout(bottomlayout)
 
         layout = QVBoxLayout()
         layout.addWidget(frame)
-        layout.addWidget(self.timercheck)
-        layout.addLayout(timelayout)
         layout.addLayout(plotlayout)
-        layout.addLayout(bottomlayout)
+        layout.addWidget(bottomframe)
 
         self.oldrecs = QLabel("Previous records")
         self.oldrecs.setStyleSheet('font-size:15px; background-color: lightgrey; border: 1px solid black;')
@@ -267,8 +281,8 @@ class MainWindow(QMainWindow):
         self.resistanceline.setData(self.resistancex,self.resistancey)
         if self.timercheck.isChecked():
             self.timer.start(1000)
-        #self.mainscheduler.START = True
-        #self.mainscheduler.CONFIGURE = True
+        self.mainscheduler.START = True
+        self.mainscheduler.CONFIGURE = True
 
     def stopmeasurement(self) -> None:
         '''
@@ -289,6 +303,7 @@ class MainWindow(QMainWindow):
         self.stopbutton.setEnabled(False)
         self.measurelabel.setText('Measurement stopped')
         self.measurelabel.setStyleSheet('font-size:24px;color:red;font-weight:bold')
+        self.setFileList()
 
     def updatetime(self) -> None:
         '''
@@ -306,14 +321,14 @@ class MainWindow(QMainWindow):
         self.connectedstate = True
         self.startbutton.setEnabled(self.idlestate)
         self.connectedlabel.setText('Device connected')
-        self.connectedlabel.setStyleSheet('font-size:24px;color:green;font-weight:bold')
+        self.connectedlabel.setStyleSheet('font-size:24px;color:darkgreen;font-weight:bold')
 
     def fpgaconfigured(self) -> None:
         '''
         Update the measurement label.
         '''
         self.measurelabel.setText('Measurement running')
-        self.measurelabel.setStyleSheet('font-size:24px;color:green;font-weight:bold')
+        self.measurelabel.setStyleSheet('font-size:24px;color:darkgreen;font-weight:bold')
 
     def fpgaconnectionlost(self) -> None:
         '''
@@ -358,3 +373,12 @@ class MainWindow(QMainWindow):
         '''
         self.mainscheduler.CLOSE = True
         return super().closeEvent(event)
+    
+    def setFileList(self) -> None:
+        if os.path.isdir(self.savepath.text()):            
+            self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
+
+    def scalexresistance(self) -> None:
+        if self.scaleresistancexaxis.isChecked():
+            print("pressed")
+
