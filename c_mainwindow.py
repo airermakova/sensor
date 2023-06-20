@@ -25,6 +25,10 @@ from datetime import datetime
 import csv
 import glob
 import time
+import argparse
+import pandas as pd
+from datetime import datetime
+import pytz
 
 class FrequencyAxisItem(AxisItem):
     def __init__(self,*args,**kwargs):
@@ -107,15 +111,56 @@ class MainWindow(QMainWindow):
         self.frequencyx = []
         self.frequencyy = []
         self.frequencyline = self.frequencyplot.plot(self.frequencyx,self.frequencyy)        
-        self.frequencyplot.autoPixelRange(True)
-        self.scaleaxis = QLabel()
-        self.scaleaxis.setText("Scale Axis")
-        self.scaleaxis.setStyleSheet("color:white")
-        self.scaleresistancexaxis = QCheckBox()
-        self.scaleresistancexaxis.clicked.connect(self.scalexresistance)
-        self.xresvalue = QLineEdit()
-        self.yresvalue = QLineEdit()
 
+        scaleflayout = QHBoxLayout()
+        self.scaleaxisLabel = QLabel()
+        self.scaleaxisLabel.setText("Scale Y Axis. From To")
+        self.scaleaxisLabel.setStyleSheet("color:white")
+        self.scalerxaxischeckbox = QCheckBox()
+        self.scalerxaxischeckbox.setEnabled(False)
+        self.scalerxaxischeckbox.clicked.connect(self.scalexresistance)
+        self.yresvaluefromlineedit = QLineEdit()
+        self.yresvaluefromlineedit.textChanged.connect(self.setscaleractive)
+        self.yresvaluefromlineedit.setStyleSheet("color:white")
+        self.yresvaluetolineedit = QLineEdit()
+        self.yresvaluetolineedit.textChanged.connect(self.setscaleractive)
+        self.yresvaluetolineedit.setStyleSheet("color:white")
+
+        scalerlayout = QHBoxLayout()
+        self.scalefaxis = QLabel()
+        self.scalefaxis.setText("Scale Y Axis. From To")
+        self.scalefaxis.setStyleSheet("color:white")
+        self.scalefxaxis = QCheckBox()
+        self.scalefxaxis.setEnabled(False)
+        self.scalefxaxis.clicked.connect(self.scalexfrequency)
+        self.yfrvalue = QLineEdit()
+        self.yfrvalue.setStyleSheet("color:white")
+        self.yfrvalue.textChanged.connect(self.setscalefactive)
+        self.yfrmaxvalue = QLineEdit()
+        self.yfrmaxvalue.setStyleSheet("color:white")
+        self.yfrmaxvalue.textChanged.connect(self.setscalefactive)
+
+
+        scaleflayout.addWidget(self.scalerxaxischeckbox)
+        scaleflayout.addWidget(self.scaleaxisLabel)
+        scaleflayout.addWidget(self.yresvaluefromlineedit)
+        scaleflayout.addWidget(self.yresvaluetolineedit)
+        scaleflayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))     
+        scalerlayout.addWidget(self.scalefxaxis)
+        scalerlayout.addWidget(self.scalefaxis)
+        scalerlayout.addWidget(self.yfrvalue)
+        scalerlayout.addWidget(self.yfrmaxvalue)
+        scalerlayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))   
+
+        scalerfinallayout = QHBoxLayout()
+        scalerfinallayout.addLayout(scaleflayout)
+        scalerfinallayout.addLayout(scalerlayout)
+
+        
+        scaleframe = QFrame()
+        scaleframe.setStyleSheet("background-color: black;")
+        scaleframe.setFrameStyle(1)
+        scaleframe.setLayout(scalerfinallayout)
 
         self.resistanceplot = PlotWidget(axisItems={'bottom':DateAxisItem()})
         self.resistanceplot.showGrid(x=True,y=True)
@@ -171,8 +216,9 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout()
         layout.addWidget(frame)
-        layout.addLayout(plotlayout)
         layout.addWidget(bottomframe)
+        layout.addWidget(scaleframe)
+        layout.addLayout(plotlayout)
 
         self.oldrecs = QLabel("Previous records")
         self.oldrecs.setStyleSheet('font-size:15px; background-color: lightgrey; border: 1px solid black;')
@@ -180,6 +226,7 @@ class MainWindow(QMainWindow):
         self.prevlist.setStyleSheet('font-size:15px; background-color: lightblue; border: 1px solid black;')
         if os.path.isdir(self.savepath.text()):            
             self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
+        self.prevlist.itemDoubleClicked.connect(self.graphSelected)
         oldpicslayout = QVBoxLayout()
         oldpicslayout.addWidget(self.oldrecs)
         oldpicslayout.addWidget(self.prevlist)
@@ -192,6 +239,7 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         widget.setLayout(finlayout)
         self.setCentralWidget(widget)
+        #widget.setStyleSheet('background-color: lightgrey;')
 
         self.show()
 
@@ -379,6 +427,62 @@ class MainWindow(QMainWindow):
             self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
 
     def scalexresistance(self) -> None:
-        if self.scaleresistancexaxis.isChecked():
-            print("pressed")
+        if self.scalerxaxischeckbox.isChecked():
+            valfrom = self.yresvaluefromlineedit.text()
+            valto = self.yresvaluetolineedit.text()
+            if(valto.isdigit() and valfrom.isdigit()):
+                self.frequencyplot.autoPixelRange = False
+                self.frequencyplot.setYRange(float(valto), float(valfrom))
+        else:
+            self.frequencyplot.autoPixelRange = True
+
+    def scalexfrequency(self):
+        if self.scalefxaxis.isChecked():
+            valfrom = self.yfrvalue.text()
+            valto = self.yfrmaxvalue.text()
+            if(valto.isdigit() and valfrom.isdigit()):
+                self.resistanceplot.autoPixelRange = False
+                self.resistanceplot.setYRange(float(valto), float(valfrom))
+        else:
+            self.resistanceplot.autoPixelRange = True  
+
+    def setscaleractive(self):
+        if len(self.yresvaluefromlineedit.text())>0 and len(self.yresvaluetolineedit.text())>0:
+            self.scalerxaxischeckbox.setEnabled(True)
+        else:
+            self.scalerxaxischeckbox.setChecked(False)
+            self.scalerxaxischeckbox.setEnabled(False)
+
+    def setscalefactive(self):
+        if len(self.yfrvalue.text())>0 and len(self.yfrmaxvalue.text())>0:
+            self.scalefxaxis.setEnabled(True)
+        else:
+            self.scalefxaxis.setChecked(False)
+            self.scalefxaxis.setEnabled(False)
+   
+    def graphSelected(self):
+        file = self.prevlist.currentItem().text()
+        filepath=os.path.join(self.savepath.text(),file)
+        print(filepath)
+        with open(filepath) as csvfile:
+            csvReader = csv.reader(csvfile, delimiter=';')
+            for row in csvReader:
+                try:
+                    self.convert_string_to_time(row[0])
+                    frequency = float(row[1])
+                    print(frequency)
+                    self.frequencyx.append(frequency)
+                    self.frequencyy.append(frequency)
+                    self.frequencyx = self.frequencyx[max(len(self.frequencyx)-1000,0):1000]
+                    self.frequencyy = self.frequencyy[max(len(self.frequencyy)-1000,0):1000]
+                    self.frequencyline.setData(self.frequencyx,self.frequencyy)
+                except:
+                    continue
+
+    def convert_string_to_time(self, date_string):
+        
+                
+
+
+
 
