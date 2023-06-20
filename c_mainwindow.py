@@ -463,24 +463,34 @@ class MainWindow(QMainWindow):
     def graphSelected(self):
         file = self.prevlist.currentItem().text()
         filepath=os.path.join(self.savepath.text(),file)
-        print(filepath)
+        self.frequencyx = []
+        self.frequencyy = []
+        self.resistancex = []
+        self.resistancey = []
+        self.resistanceline.setData(self.resistancex,self.resistancey)
+        self.frequencyline.setData(self.frequencyx,self.frequencyy)
         with open(filepath) as csvfile:
             csvReader = csv.reader(csvfile, delimiter=';')
             for row in csvReader:
                 try:
-                    self.convert_string_to_time(row[0])
-                    frequency = float(row[1])
-                    print(frequency)
-                    self.frequencyx.append(frequency)
-                    self.frequencyy.append(frequency)
+                    tm = self.convert_string_to_time(row[0])
+                    self.frequencyx.append(tm)
+                    self.frequencyy.append(float(row[1]))
                     self.frequencyx = self.frequencyx[max(len(self.frequencyx)-1000,0):1000]
                     self.frequencyy = self.frequencyy[max(len(self.frequencyy)-1000,0):1000]
-                    self.frequencyline.setData(self.frequencyx,self.frequencyy)
+                    self.resistancex.append(tm)
+                    self.resistancey.append(float(row[2]))
+                    self.resistancex = self.resistancex[max(len(self.resistancex)-1000,0):1000]
+                    self.resistancey = self.resistancey[max(len(self.resistancey)-1000,0):1000]
                 except:
                     continue
+        self.resistanceline.setData(self.resistancex,self.resistancey)
+        self.frequencyline.setData(self.frequencyx,self.frequencyy)
+
 
     def convert_string_to_time(self, date_string):
-        
+        date_obj = datetime.strptime(date_string, '%d/%m/%Y, %H:%M:%S')
+        return date_obj.now().timestamp()
                 
 
 
