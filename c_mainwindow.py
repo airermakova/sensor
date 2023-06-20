@@ -490,7 +490,7 @@ class MainWindow(QMainWindow):
 
     def convert_string_to_time(self, date_string):
         date_obj = datetime.strptime(date_string, '%d/%m/%Y, %H:%M:%S')
-        return date_obj.now().timestamp()
+        return date_obj.timestamp()
                 
 
 
