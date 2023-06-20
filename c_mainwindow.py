@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
         self.scaleaxisLabel.setStyleSheet("color:white")
         self.scalerxaxischeckbox = QCheckBox()
         self.scalerxaxischeckbox.setEnabled(False)
-        self.scalerxaxischeckbox.clicked.connect(self.scalexresistance)
+        self.scalerxaxischeckbox.clicked.connect(self.scalexfrequency)
         self.yresvaluefromlineedit = QLineEdit()
         self.yresvaluefromlineedit.textChanged.connect(self.setscaleractive)
         self.yresvaluefromlineedit.setStyleSheet("color:white")
@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
         self.scalefaxis.setStyleSheet("color:white")
         self.scalefxaxis = QCheckBox()
         self.scalefxaxis.setEnabled(False)
-        self.scalefxaxis.clicked.connect(self.scalexfrequency)
+        self.scalefxaxis.clicked.connect(self.scalexresistance)
         self.yfrvalue = QLineEdit()
         self.yfrvalue.setStyleSheet("color:white")
         self.yfrvalue.textChanged.connect(self.setscalefactive)
@@ -310,9 +310,7 @@ class MainWindow(QMainWindow):
         if self.savecheck.isChecked():
             if not os.path.isdir(self.savepath.text()):
                 os.mkdir(self.savepath.text())
-            self.mainscheduler.savefile = open(self.savepath.text()+'\\'+datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv','w',newline='')
-            csv.writer(self.mainscheduler.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
-            self.mainscheduler.SAVEDATA = True
+            self.writeCsvFile(self.savepath.text())
         else:
             self.mainscheduler.SAVEDATA = False
         self.savecheck.setEnabled(False)
@@ -423,10 +421,11 @@ class MainWindow(QMainWindow):
         return super().closeEvent(event)
     
     def setFileList(self) -> None:
+        self.prevlist.clear()
         if os.path.isdir(self.savepath.text()):            
             self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
 
-    def scalexresistance(self) -> None:
+    def scalexfrequency(self) -> None:
         if self.scalerxaxischeckbox.isChecked():
             valfrom = self.yresvaluefromlineedit.text()
             valto = self.yresvaluetolineedit.text()
@@ -434,9 +433,11 @@ class MainWindow(QMainWindow):
                 self.frequencyplot.autoPixelRange = False
                 self.frequencyplot.setYRange(float(valto), float(valfrom))
         else:
-            self.frequencyplot.autoPixelRange = True
+            print("scalexfrequency")
+            self.frequencyplot.autoPixelRange = False
+            self.frequencyplot.setYRange(100000.0, 0.0)
 
-    def scalexfrequency(self):
+    def scalexresistance(self):
         if self.scalefxaxis.isChecked():
             valfrom = self.yfrvalue.text()
             valto = self.yfrmaxvalue.text()
@@ -444,7 +445,7 @@ class MainWindow(QMainWindow):
                 self.resistanceplot.autoPixelRange = False
                 self.resistanceplot.setYRange(float(valto), float(valfrom))
         else:
-            self.resistanceplot.autoPixelRange = True  
+            print("scalexresistance")
 
     def setscaleractive(self):
         if len(self.yresvaluefromlineedit.text())>0 and len(self.yresvaluetolineedit.text())>0:
@@ -491,6 +492,12 @@ class MainWindow(QMainWindow):
     def convert_string_to_time(self, date_string):
         date_obj = datetime.strptime(date_string, '%d/%m/%Y, %H:%M:%S')
         return date_obj.timestamp()
+    
+    def writeCsvFile(self, dirpath):
+        self.mainscheduler.savedir = dirpath
+        self.mainscheduler.savefile = open(dirpath +'\\'+datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv','w',newline='')
+        csv.writer(self.mainscheduler.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
+        self.mainscheduler.SAVEDATA = True
                 
 
 
