@@ -18,7 +18,7 @@ from PySide6.QtWidgets import QMainWindow,QCheckBox,QSizePolicy,QPushButton,\
                               QVBoxLayout,QWidget,QFileDialog, QListWidget, QFrame, QLineEdit
 from PySide6.QtCore import QTime,QTimer,QThreadPool,Qt
 from PySide6.QtGui import QCloseEvent
-from pyqtgraph import AxisItem,PlotWidget,DateAxisItem
+from pyqtgraph import AxisItem,PlotWidget,DateAxisItem,PlotItem
 from c_mainscheduler import MainScheduler
 import os
 from datetime import datetime
@@ -44,6 +44,8 @@ class FrequencyAxisItem(AxisItem):
         return [f'{v:.3f}' for v in values] 
 
 class MainWindow(QMainWindow):
+    filepath=""
+
     def __init__(self) -> None:
         '''
         Initialize the application main window.
@@ -51,6 +53,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('QCM Oscillator')
 
+        #WIDGETS TO SAVE DATA IN CSV FILE
         self.savecheck = QCheckBox('Save data')
         self.savecheck.setStyleSheet('font-size:14px')
         self.savecheck.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
@@ -82,6 +85,7 @@ class MainWindow(QMainWindow):
         frame.setFrameStyle(1)
         frame.setLayout(savelayout)
 
+        #TIMER WIDGETS
         self.timercheck = QCheckBox('Set timer')
         self.timercheck.setStyleSheet('font-size:20px')
         self.timercheck.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
@@ -104,14 +108,8 @@ class MainWindow(QMainWindow):
         timelayout.addWidget(self.timerbox)
         timelayout.addWidget(self.remainingtime)
         timelayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))     
-
-        self.frequencyplot = PlotWidget(axisItems={'bottom':DateAxisItem(),'left': FrequencyAxisItem(orientation='left')})
-        self.frequencyplot.showGrid(x=True,y=True)
-        self.frequencyplot.setTitle('Frequency [Hz]')
-        self.frequencyx = []
-        self.frequencyy = []
-        self.frequencyline = self.frequencyplot.plot(self.frequencyx,self.frequencyy)        
-
+    
+        #GRAPH SCALER WIDGET
         scaleflayout = QHBoxLayout()
         self.scaleaxisLabel = QLabel()
         self.scaleaxisLabel.setText("Scale Y Axis. From To")
@@ -125,6 +123,11 @@ class MainWindow(QMainWindow):
         self.yresvaluetolineedit = QLineEdit()
         self.yresvaluetolineedit.textChanged.connect(self.setscaleractive)
         self.yresvaluetolineedit.setStyleSheet("color:white")
+        scaleflayout.addWidget(self.scalerxaxischeckbox)
+        scaleflayout.addWidget(self.scaleaxisLabel)
+        scaleflayout.addWidget(self.yresvaluefromlineedit)
+        scaleflayout.addWidget(self.yresvaluetolineedit)
+        scaleflayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))  
 
         scalerlayout = QHBoxLayout()
         self.scalefaxis = QLabel()
@@ -139,29 +142,21 @@ class MainWindow(QMainWindow):
         self.yfrmaxvalue = QLineEdit()
         self.yfrmaxvalue.setStyleSheet("color:white")
         self.yfrmaxvalue.textChanged.connect(self.setscalefactive)
-
-
-        scaleflayout.addWidget(self.scalerxaxischeckbox)
-        scaleflayout.addWidget(self.scaleaxisLabel)
-        scaleflayout.addWidget(self.yresvaluefromlineedit)
-        scaleflayout.addWidget(self.yresvaluetolineedit)
-        scaleflayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))     
         scalerlayout.addWidget(self.scalefxaxis)
         scalerlayout.addWidget(self.scalefaxis)
         scalerlayout.addWidget(self.yfrvalue)
         scalerlayout.addWidget(self.yfrmaxvalue)
-        scalerlayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))   
+        scalerlayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed)) 
 
         scalerfinallayout = QHBoxLayout()
         scalerfinallayout.addLayout(scaleflayout)
-        scalerfinallayout.addLayout(scalerlayout)
-
-        
+        scalerfinallayout.addLayout(scalerlayout)        
         scaleframe = QFrame()
         scaleframe.setStyleSheet("background-color: black;")
         scaleframe.setFrameStyle(1)
         scaleframe.setLayout(scalerfinallayout)
 
+        #GRAPH PLOT WIDGET
         self.resistanceplot = PlotWidget(axisItems={'bottom':DateAxisItem()})
         self.resistanceplot.showGrid(x=True,y=True)
         self.resistanceplot.setTitle('Resistance [Ohm]')
@@ -169,11 +164,19 @@ class MainWindow(QMainWindow):
         self.resistancex = []
         self.resistancey = []
         self.resistanceline = self.resistanceplot.plot(self.resistancex,self.resistancey)
+        
+        self.frequencyplot = PlotWidget(axisItems={'bottom':DateAxisItem(),'left': FrequencyAxisItem(orientation='left')})
+        self.frequencyplot.showGrid(x=True,y=True)
+        self.frequencyplot.setTitle('Frequency [Hz]')
+        self.frequencyx = []
+        self.frequencyy = []
+        self.frequencyline = self.frequencyplot.plot(self.frequencyx,self.frequencyy)    
 
         plotlayout = QHBoxLayout()
         plotlayout.addWidget(self.frequencyplot)
         plotlayout.addWidget(self.resistanceplot)
 
+        #BUTTONS START AND STOP
         self.startbutton = QPushButton('START')
         self.startbutton.setFixedSize(100,50)
         self.startbutton.setStyleSheet('font-size:22px;font-weight:semibold;color:darkgreen')
@@ -188,11 +191,13 @@ class MainWindow(QMainWindow):
         self.stopbutton.setEnabled(False)
         self.stopbutton.clicked.connect(self.stopmeasurement)
 
+        #TIMER AND START STOP BUTTON LAYOUT
         buttonlayout = QHBoxLayout()
         buttonlayout.addLayout(timelayout)
         buttonlayout.addWidget(self.startbutton)
         buttonlayout.addWidget(self.stopbutton)
 
+        #DEVICE CONNECTED AND MEASUREMENT STARTED LABELS
         self.connectedlabel = QLabel('Device not connected')
         self.connectedlabel.setStyleSheet('font-size:20px;color:darkred;font-weight:bold')
         self.connectedlabel.setSizePolicy(QSizePolicy.Fixed,QSizePolicy.Fixed)
@@ -205,6 +210,7 @@ class MainWindow(QMainWindow):
         labellayout.addWidget(self.connectedlabel)
         labellayout.addWidget(self.measurelabel)
 
+        #FINAL LAYOUTS FOR MEASUREMENTS AND GRAPHS
         bottomlayout = QHBoxLayout()
         bottomlayout.addLayout(timelayout)
         bottomlayout.addLayout(buttonlayout)
@@ -220,6 +226,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(scaleframe)
         layout.addLayout(plotlayout)
 
+        #WIDGETS WITH PREVIOUS RECORDINGS
         self.oldrecs = QLabel("Previous records")
         self.oldrecs.setStyleSheet('font-size:15px; background-color: lightgrey; border: 1px solid black;')
         self.prevlist = QListWidget(self)
@@ -231,6 +238,7 @@ class MainWindow(QMainWindow):
         oldpicslayout.addWidget(self.oldrecs)
         oldpicslayout.addWidget(self.prevlist)
 
+        #FINAL LAYOUTS
         finlayout = QHBoxLayout()
         finlayout.addLayout(oldpicslayout)
         finlayout.addLayout(layout, 1)
@@ -430,12 +438,10 @@ class MainWindow(QMainWindow):
             valfrom = self.yresvaluefromlineedit.text()
             valto = self.yresvaluetolineedit.text()
             if(valto.isdigit() and valfrom.isdigit()):
-                self.frequencyplot.autoPixelRange = False
                 self.frequencyplot.setYRange(float(valto), float(valfrom))
         else:
-            print("scalexfrequency")
-            self.frequencyplot.autoPixelRange = False
-            self.frequencyplot.setYRange(100000.0, 0.0)
+            self.frequencyplot.autoRange()
+            self.frequencyplot.enableAutoRange()
 
     def scalexresistance(self):
         if self.scalefxaxis.isChecked():
@@ -445,7 +451,9 @@ class MainWindow(QMainWindow):
                 self.resistanceplot.autoPixelRange = False
                 self.resistanceplot.setYRange(float(valto), float(valfrom))
         else:
-            print("scalexresistance")
+            self.resistanceplot.autoRange()
+            self.resistanceplot.enableAutoRange()
+
 
     def setscaleractive(self):
         if len(self.yresvaluefromlineedit.text())>0 and len(self.yresvaluetolineedit.text())>0:
@@ -495,7 +503,8 @@ class MainWindow(QMainWindow):
     
     def writeCsvFile(self, dirpath):
         self.mainscheduler.savedir = dirpath
-        self.mainscheduler.savefile = open(dirpath +'\\'+datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv','w',newline='')
+        self.filepath = os.path.join(dirpath, datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv')
+        self.mainscheduler.savefile = open(self.filepath,'w',newline='')
         csv.writer(self.mainscheduler.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
         self.mainscheduler.SAVEDATA = True
                 

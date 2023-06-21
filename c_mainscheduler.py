@@ -16,6 +16,7 @@ from serial.tools import list_ports
 import csv
 from datetime import datetime
 import time
+import os
 
 class MainSchedulerSignal(QObject):
     '''
@@ -70,6 +71,7 @@ class MainScheduler(QRunnable):
         self.LOST = False
         self.fpga = None # FPGA architecture
         self.savefile = None # Save file identifier
+        self.savedir = None
 
     @Slot()
     def run(self) -> None:
@@ -97,7 +99,8 @@ class MainScheduler(QRunnable):
                     self.CONNECT = False
                     self.signal.connected.emit()
                 except Exception as error:
-                    print('CONNECT - ',error)
+                    g=1
+                    #print('CONNECT - ',error)
             elif self.CONFIGURE:
                 try:
                     self.configuration()
@@ -185,3 +188,15 @@ class MainScheduler(QRunnable):
                 raise MainSchedulerException(4)
             else:
                 raise MainSchedulerException(3)
+            
+    def savefile(self):
+        try:
+            sz = os.path.getsize(self.savefile)/1048576
+            if(sz>10):
+                self.savefile.close()
+                self.savefile = open(self.savedir +'\\'+datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv','w',newline='')
+                csv.writer(self.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
+            csv.writer(self.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
+        except:
+            print(f'file {self.savefile} does not exists')
+
