@@ -29,6 +29,8 @@ import argparse
 import pandas as pd
 from datetime import datetime
 import pytz
+from PySide6 import QtGui, QtCore
+
 
 class FrequencyAxisItem(AxisItem):
     def __init__(self,*args,**kwargs):
@@ -479,6 +481,7 @@ class MainWindow(QMainWindow):
         self.resistanceline.setData(self.resistancex,self.resistancey)
         self.frequencyline.setData(self.frequencyx,self.frequencyy)
         with open(filepath) as csvfile:
+            print(f"READING SCV FILE {filepath}")
             csvReader = csv.reader(csvfile, delimiter=';')
             for row in csvReader:
                 try:
@@ -493,9 +496,8 @@ class MainWindow(QMainWindow):
                     self.resistancey = self.resistancey[max(len(self.resistancey)-1000,0):1000]
                 except:
                     continue
-        self.resistanceline.setData(self.resistancex,self.resistancey)
-        self.frequencyline.setData(self.frequencyx,self.frequencyy)
-
+            self.resistanceline.setData(self.resistancex,self.resistancey)
+            self.frequencyline.setData(self.frequencyx,self.frequencyy)
 
     def convert_string_to_time(self, date_string):
         date_obj = datetime.strptime(date_string, '%d/%m/%Y, %H:%M:%S')

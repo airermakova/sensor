@@ -52,6 +52,8 @@ class MainSchedulerException(Exception):
         self.code = code
 
 class MainScheduler(QRunnable):
+    cnt = 0
+
     def __init__(self) -> None:
         '''
         Initialize the application main scheduler.
@@ -180,7 +182,10 @@ class MainScheduler(QRunnable):
         try:
             [qcmfrequency,qcmresistance] = self.fpga.measurement()
             if self.SAVEDATA:
-                csv.writer(self.savefile,delimiter=';').writerow([datetime.now().strftime('%d/%m/%Y, %H:%M:%S'),self.ddsfrequency-qcmfrequency,qcmresistance])
+                data = [datetime.now().strftime('%d/%m/%Y, %H:%M:%S'),self.ddsfrequency-qcmfrequency,qcmresistance]
+                self.savecsvfile(data)
+                self.cnt = self.cnt+1
+                #csv.writer(self.savefile,delimiter=';').writerow([datetime.now().strftime('%d/%m/%Y, %H:%M:%S'),self.ddsfrequency-qcmfrequency,qcmresistance])
             return qcmfrequency,qcmresistance
         except FPGAException as error:
             self.fpga.close()
@@ -189,14 +194,15 @@ class MainScheduler(QRunnable):
             else:
                 raise MainSchedulerException(3)
             
-    def savefile(self):
+    def savecsvfile(self, data):
         try:
-            sz = os.path.getsize(self.savefile)/1048576
-            if(sz>10):
+            print(f"COUNT{self.cnt}")
+            if(self.cnt>65535):
+                self.cnt=0
                 self.savefile.close()
                 self.savefile = open(self.savedir +'\\'+datetime.now().strftime('%Y%m%d_%H%M%S')+'.csv','w',newline='')
                 csv.writer(self.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
-            csv.writer(self.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
+            csv.writer(self.savefile,delimiter=';').writerow(data)
         except:
             print(f'file {self.savefile} does not exists')
 
