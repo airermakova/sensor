@@ -294,6 +294,9 @@ class MainWindow(QMainWindow):
         self.savepath.setText(QFileDialog.getExistingDirectory())
         if self.savepath.text()=='':
             self.savepath.setText(oldpath)
+        elif os.path.isdir(self.savepath.text()): 
+            self.prevlist.clear()           
+            self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
 
     def timercheckstatechanged(self,state:int) -> None:
         '''
