@@ -160,16 +160,28 @@ class MainWindow(QMainWindow):
         scalerlayout.addWidget(self.yfrvalue)
         scalerlayout.addWidget(self.yfrmaxvalue)
         scalerlayout.addWidget(self.autoscalerxaxis)
-        scalerlayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed)) 
+        scalerlayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))
+        #WIDGETS TO SET FULL FREQUENCY/DEVIATION FREQUENCY
+        devfrequencylayout = QHBoxLayout()
+        self.devfrequency = QLabel()
+        self.devfrequency.setText("Show deviation frequency")
+        self.devfrequency.setStyleSheet("color:white")
+        self.devfrequencyselect = QCheckBox()
+        devfrequencylayout.addWidget(self.devfrequency)
+        devfrequencylayout.addWidget(self.devfrequencyselect)
+        devfrequencylayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))  
 
 
         scalerfinallayout = QHBoxLayout()
         scalerfinallayout.addLayout(scaleflayout)
-        scalerfinallayout.addLayout(scalerlayout)        
+        scalerfinallayout.addLayout(scalerlayout) 
+        scalervfinallayout = QVBoxLayout()
+        scalervfinallayout.addLayout(scalerfinallayout)
+        scalervfinallayout.addLayout(devfrequencylayout)
         scaleframe = QFrame()
         scaleframe.setStyleSheet("background-color: black;")
         scaleframe.setFrameStyle(1)
-        scaleframe.setLayout(scalerfinallayout)
+        scaleframe.setLayout(scalervfinallayout)
 
         #GRAPH PLOT WIDGET
         self.resistanceplot = PlotWidget(axisItems={'bottom':DateAxisItem()})
@@ -425,7 +437,10 @@ class MainWindow(QMainWindow):
             self.mainscheduler.LOST = False
         x = time.time()
         self.frequencyx.append(x)
-        self.frequencyy.append(qcmfrequency)
+        if self.devfrequencyselect.isChecked():
+            self.frequencyy.append(qcmfrequency-49000)
+        else:
+            self.frequencyy.append(qcmfrequency)
         self.frequencyx = self.frequencyx[max(len(self.frequencyx)-1000,0):1000]
         self.frequencyy = self.frequencyy[max(len(self.frequencyy)-1000,0):1000]
         self.frequencyline.setData(self.frequencyx,self.frequencyy)
@@ -533,7 +548,8 @@ class MainWindow(QMainWindow):
     def autoscalerraxis(self):
         self.resistanceplot.autoRange()
         self.resistanceplot.enableAutoRange()  
-                
+
+
 
 
 
