@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QMainWindow,QCheckBox,QSizePolicy,QPushButton,\
                               QLabel,QHBoxLayout,QSpacerItem,QTimeEdit,\
                               QVBoxLayout,QWidget,QFileDialog, QListWidget, QFrame, QLineEdit
 from PySide6.QtCore import QTime,QTimer,QThreadPool,Qt
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import QCloseEvent, QCursor
 from pyqtgraph import AxisItem,PlotWidget,DateAxisItem,PlotItem
 from c_mainscheduler import MainScheduler
 import os
@@ -125,10 +125,16 @@ class MainWindow(QMainWindow):
         self.yresvaluetolineedit = QLineEdit()
         self.yresvaluetolineedit.textChanged.connect(self.setscaleractive)
         self.yresvaluetolineedit.setStyleSheet("color:white")
+        self.autoscalefxaxis = QPushButton()
+        self.autoscalefxaxis.setText("Autoscale Fr")
+        self.autoscalefxaxis.clicked.connect(self.autoscalefraxis)
+        self.autoscalefxaxis.setStyleSheet("color:white")
+        self.autoscalefxaxis.setCursor(Qt.CursorShape.PointingHandCursor)
         scaleflayout.addWidget(self.scalerxaxischeckbox)
         scaleflayout.addWidget(self.scaleaxisLabel)
         scaleflayout.addWidget(self.yresvaluefromlineedit)
         scaleflayout.addWidget(self.yresvaluetolineedit)
+        scaleflayout.addWidget(self.autoscalefxaxis)
         scaleflayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))  
 
         scalerlayout = QHBoxLayout()
@@ -144,11 +150,18 @@ class MainWindow(QMainWindow):
         self.yfrmaxvalue = QLineEdit()
         self.yfrmaxvalue.setStyleSheet("color:white")
         self.yfrmaxvalue.textChanged.connect(self.setscalefactive)
+        self.autoscalerxaxis = QPushButton()
+        self.autoscalerxaxis.setText("Autoscale Res")
+        self.autoscalerxaxis.clicked.connect(self.autoscalerraxis)
+        self.autoscalerxaxis.setStyleSheet("color:white")
+        self.autoscalerxaxis.setCursor(Qt.CursorShape.PointingHandCursor)
         scalerlayout.addWidget(self.scalefxaxis)
         scalerlayout.addWidget(self.scalefaxis)
         scalerlayout.addWidget(self.yfrvalue)
         scalerlayout.addWidget(self.yfrmaxvalue)
+        scalerlayout.addWidget(self.autoscalerxaxis)
         scalerlayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed)) 
+
 
         scalerfinallayout = QHBoxLayout()
         scalerfinallayout.addLayout(scaleflayout)
@@ -295,7 +308,7 @@ class MainWindow(QMainWindow):
         if self.savepath.text()=='':
             self.savepath.setText(oldpath)
         elif os.path.isdir(self.savepath.text()): 
-            self.prevlist.clear()           
+            self.prevlist.clear()       
             self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
 
     def timercheckstatechanged(self,state:int) -> None:
@@ -512,6 +525,14 @@ class MainWindow(QMainWindow):
         self.mainscheduler.savefile = open(self.filepath,'w',newline='')
         csv.writer(self.mainscheduler.savefile,delimiter=';').writerow(['Time','Frequency [Hz]','Resistance [Ohm]'])
         self.mainscheduler.SAVEDATA = True
+
+    def autoscalefraxis(self):
+        self.frequencyplot.autoRange()
+        self.frequencyplot.enableAutoRange()
+
+    def autoscalerraxis(self):
+        self.resistanceplot.autoRange()
+        self.resistanceplot.enableAutoRange()  
                 
 
 
