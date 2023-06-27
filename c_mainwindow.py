@@ -121,14 +121,14 @@ class MainWindow(QMainWindow):
         self.scalerxaxischeckbox.clicked.connect(self.scalexfrequency)
         self.yresvaluefromlineedit = QLineEdit()
         self.yresvaluefromlineedit.textChanged.connect(self.setscaleractive)
-        self.yresvaluefromlineedit.setStyleSheet("color:white")
+        self.yresvaluefromlineedit.setStyleSheet("color:white; border :2px solid;border-color : lightblue;")
         self.yresvaluetolineedit = QLineEdit()
         self.yresvaluetolineedit.textChanged.connect(self.setscaleractive)
-        self.yresvaluetolineedit.setStyleSheet("color:white")
+        self.yresvaluetolineedit.setStyleSheet("color:white; border :2px solid;border-color : lightblue;")
         self.autoscalefxaxis = QPushButton()
-        self.autoscalefxaxis.setText("Autoscale Fr")
+        self.autoscalefxaxis.setText("Autoscale")
         self.autoscalefxaxis.clicked.connect(self.autoscalefraxis)
-        self.autoscalefxaxis.setStyleSheet("color:white")
+        self.autoscalefxaxis.setStyleSheet("color:white; border :2px solid;border-color : lightgrey; border-radius: 3px")
         self.autoscalefxaxis.setCursor(Qt.CursorShape.PointingHandCursor)
         scaleflayout.addWidget(self.scalerxaxischeckbox)
         scaleflayout.addWidget(self.scaleaxisLabel)
@@ -145,15 +145,15 @@ class MainWindow(QMainWindow):
         self.scalefxaxis.setEnabled(False)
         self.scalefxaxis.clicked.connect(self.scalexresistance)
         self.yfrvalue = QLineEdit()
-        self.yfrvalue.setStyleSheet("color:white")
+        self.yfrvalue.setStyleSheet("color:white; border :2px solid;border-color : lightblue;")
         self.yfrvalue.textChanged.connect(self.setscalefactive)
         self.yfrmaxvalue = QLineEdit()
-        self.yfrmaxvalue.setStyleSheet("color:white")
+        self.yfrmaxvalue.setStyleSheet("color:white; border :2px solid;border-color : lightblue;")
         self.yfrmaxvalue.textChanged.connect(self.setscalefactive)
         self.autoscalerxaxis = QPushButton()
-        self.autoscalerxaxis.setText("Autoscale Res")
+        self.autoscalerxaxis.setText("Autoscale")
         self.autoscalerxaxis.clicked.connect(self.autoscalerraxis)
-        self.autoscalerxaxis.setStyleSheet("color:white")
+        self.autoscalerxaxis.setStyleSheet("color:white; border :2px solid;border-color : lightgrey; border-radius: 3px")
         self.autoscalerxaxis.setCursor(Qt.CursorShape.PointingHandCursor)
         scalerlayout.addWidget(self.scalefxaxis)
         scalerlayout.addWidget(self.scalefaxis)
@@ -161,16 +161,25 @@ class MainWindow(QMainWindow):
         scalerlayout.addWidget(self.yfrmaxvalue)
         scalerlayout.addWidget(self.autoscalerxaxis)
         scalerlayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))
-        #WIDGETS TO SET FULL FREQUENCY/DEVIATION FREQUENCY
+        #WIDGETS TO SET FULL FREQUENCY/DEVIATION FREQUENCY AND MIDDLE VALUE
         devfrequencylayout = QHBoxLayout()
         self.devfrequency = QLabel()
         self.devfrequency.setText("Show deviation frequency")
         self.devfrequency.setStyleSheet("color:white")
         self.devfrequencyselect = QCheckBox()
+        self.portantfrequencyvalue = QLineEdit()
+        self.portantfrequencyvalue.setStyleSheet("color:white; border :2px solid;border-color : lightblue;")
+        self.middlefrequencyname = QLabel()
+        self.middlefrequencyname.setStyleSheet("color:white")
+        self.middlefrequencyname.setText("Frequency average: ")
+        self.middlefrequency = QLabel()
+        self.middlefrequency.setStyleSheet("color:lightblue")
         devfrequencylayout.addWidget(self.devfrequency)
         devfrequencylayout.addWidget(self.devfrequencyselect)
+        devfrequencylayout.addWidget(self.portantfrequencyvalue)
+        devfrequencylayout.addWidget(self.middlefrequencyname)
+        devfrequencylayout.addWidget(self.middlefrequency)
         devfrequencylayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))  
-
 
         scalerfinallayout = QHBoxLayout()
         scalerfinallayout.addLayout(scaleflayout)
@@ -437,8 +446,8 @@ class MainWindow(QMainWindow):
             self.mainscheduler.LOST = False
         x = time.time()
         self.frequencyx.append(x)
-        if self.devfrequencyselect.isChecked():
-            self.frequencyy.append(qcmfrequency-49000)
+        if self.devfrequencyselect.isChecked() and len(self.portantfrequencyvalue.text())>0:
+            self.frequencyy.append(qcmfrequency-float(self.portantfrequencyvalue.text()))
         else:
             self.frequencyy.append(qcmfrequency)
         self.frequencyx = self.frequencyx[max(len(self.frequencyx)-1000,0):1000]
@@ -449,6 +458,8 @@ class MainWindow(QMainWindow):
         self.resistancex = self.resistancex[max(len(self.resistancex)-1000,0):1000]
         self.resistancey = self.resistancey[max(len(self.resistancey)-1000,0):1000]
         self.resistanceline.setData(self.resistancex,self.resistancey)
+        self.middlefrequency.setText(str(sum(self.frequencyy) / len(self.frequencyy)))
+
 
     def fpgasignallost(self) -> None:
         self.measurelabel.setText('Recovering input signal...')
@@ -494,6 +505,8 @@ class MainWindow(QMainWindow):
         else:
             self.scalerxaxischeckbox.setChecked(False)
             self.scalerxaxischeckbox.setEnabled(False)
+            self.resistanceplot.autoRange()
+            self.resistanceplot.enableAutoRange()
 
     def setscalefactive(self):
         if len(self.yfrvalue.text())>0 and len(self.yfrmaxvalue.text())>0:
@@ -501,6 +514,8 @@ class MainWindow(QMainWindow):
         else:
             self.scalefxaxis.setChecked(False)
             self.scalefxaxis.setEnabled(False)
+            self.frequencyplot.autoRange()
+            self.frequencyplot.enableAutoRange()
    
     def graphSelected(self):
         file = self.prevlist.currentItem().text()
@@ -518,7 +533,10 @@ class MainWindow(QMainWindow):
                 try:
                     tm = self.convert_string_to_time(row[0])
                     self.frequencyx.append(tm)
-                    self.frequencyy.append(float(row[1]))
+                    if self.devfrequencyselect.isChecked() and len(self.portantfrequencyvalue.text())>0:
+                        self.frequencyy.append(float(row[1])-float(self.portantfrequencyvalue.text()))
+                    else:
+                        self.frequencyy.append(float(row[1]))
                     self.frequencyx = self.frequencyx[max(len(self.frequencyx)-1000,0):1000]
                     self.frequencyy = self.frequencyy[max(len(self.frequencyy)-1000,0):1000]
                     self.resistancex.append(tm)
@@ -529,6 +547,7 @@ class MainWindow(QMainWindow):
                     continue
             self.resistanceline.setData(self.resistancex,self.resistancey)
             self.frequencyline.setData(self.frequencyx,self.frequencyy)
+            self.middlefrequency.setText(str(sum(self.frequencyy) / len(self.frequencyy)))
 
     def convert_string_to_time(self, date_string):
         date_obj = datetime.strptime(date_string, '%d/%m/%Y, %H:%M:%S')
