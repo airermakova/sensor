@@ -174,11 +174,18 @@ class MainWindow(QMainWindow):
         self.middlefrequencyname.setText("Frequency average: ")
         self.middlefrequency = QLabel()
         self.middlefrequency.setStyleSheet("color:lightblue")
+        self.middleresistancename = QLabel()
+        self.middleresistancename.setStyleSheet("color:white")
+        self.middleresistancename.setText("Resistance average: ")
+        self.middleresistance = QLabel()
+        self.middleresistance.setStyleSheet("color:lightblue")
         devfrequencylayout.addWidget(self.devfrequency)
         devfrequencylayout.addWidget(self.devfrequencyselect)
         devfrequencylayout.addWidget(self.portantfrequencyvalue)
         devfrequencylayout.addWidget(self.middlefrequencyname)
         devfrequencylayout.addWidget(self.middlefrequency)
+        devfrequencylayout.addWidget(self.middleresistancename)
+        devfrequencylayout.addWidget(self.middleresistance)
         devfrequencylayout.addItem(QSpacerItem(0,0,QSizePolicy.Expanding,QSizePolicy.Fixed))  
 
         scalerfinallayout = QHBoxLayout()
@@ -458,7 +465,8 @@ class MainWindow(QMainWindow):
         self.resistancex = self.resistancex[max(len(self.resistancex)-1000,0):1000]
         self.resistancey = self.resistancey[max(len(self.resistancey)-1000,0):1000]
         self.resistanceline.setData(self.resistancex,self.resistancey)
-        self.middlefrequency.setText(str(sum(self.frequencyy) / len(self.frequencyy)))
+        self.countmiddlevalues()
+
 
 
     def fpgasignallost(self) -> None:
@@ -547,7 +555,8 @@ class MainWindow(QMainWindow):
                     continue
             self.resistanceline.setData(self.resistancex,self.resistancey)
             self.frequencyline.setData(self.frequencyx,self.frequencyy)
-            self.middlefrequency.setText(str(sum(self.frequencyy) / len(self.frequencyy)))
+            self.countmiddlevalues()
+
 
     def convert_string_to_time(self, date_string):
         date_obj = datetime.strptime(date_string, '%d/%m/%Y, %H:%M:%S')
@@ -567,6 +576,10 @@ class MainWindow(QMainWindow):
     def autoscalerraxis(self):
         self.resistanceplot.autoRange()
         self.resistanceplot.enableAutoRange()  
+
+    def countmiddlevalues(self):
+            self.middlefrequency.setText(str(sum(self.frequencyy) / len(self.frequencyy)))
+            self.middleresistance.setText(str(sum(self.resistancey) / len(self.resistancey)))
 
 
 
