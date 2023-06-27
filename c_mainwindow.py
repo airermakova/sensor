@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         self.yresvaluetolineedit.textChanged.connect(self.setscaleractive)
         self.yresvaluetolineedit.setStyleSheet("color:white; border :2px solid;border-color : lightblue;")
         self.autoscalefxaxis = QPushButton()
-        self.autoscalefxaxis.setText("Autoscale")
+        self.autoscalefxaxis.setText("Full graph")
         self.autoscalefxaxis.clicked.connect(self.autoscalefraxis)
         self.autoscalefxaxis.setStyleSheet("color:white; border :2px solid;border-color : lightgrey; border-radius: 3px")
         self.autoscalefxaxis.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -151,7 +151,7 @@ class MainWindow(QMainWindow):
         self.yfrmaxvalue.setStyleSheet("color:white; border :2px solid;border-color : lightblue;")
         self.yfrmaxvalue.textChanged.connect(self.setscalefactive)
         self.autoscalerxaxis = QPushButton()
-        self.autoscalerxaxis.setText("Autoscale")
+        self.autoscalerxaxis.setText("Full graph")
         self.autoscalerxaxis.clicked.connect(self.autoscalerraxis)
         self.autoscalerxaxis.setStyleSheet("color:white; border :2px solid;border-color : lightgrey; border-radius: 3px")
         self.autoscalerxaxis.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -164,7 +164,7 @@ class MainWindow(QMainWindow):
         #WIDGETS TO SET FULL FREQUENCY/DEVIATION FREQUENCY AND MIDDLE VALUE
         devfrequencylayout = QHBoxLayout()
         self.devfrequency = QLabel()
-        self.devfrequency.setText("Show deviation frequency")
+        self.devfrequency.setText("Remove base frequency")
         self.devfrequency.setStyleSheet("color:white")
         self.devfrequencyselect = QCheckBox()
         self.portantfrequencyvalue = QLineEdit()
@@ -277,9 +277,13 @@ class MainWindow(QMainWindow):
         if os.path.isdir(self.savepath.text()):            
             self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
         self.prevlist.itemDoubleClicked.connect(self.graphSelected)
+        self.clearrecs = QPushButton("Clear all records")
+        self.clearrecs.setStyleSheet('font-size:15px; background-color: lightgrey; border: 1px solid black;')
+        self.clearrecs.clicked.connect(self.clearrecords)
         oldpicslayout = QVBoxLayout()
         oldpicslayout.addWidget(self.oldrecs)
         oldpicslayout.addWidget(self.prevlist)
+        oldpicslayout.addWidget(self.clearrecs)
 
         #FINAL LAYOUTS
         finlayout = QHBoxLayout()
@@ -576,6 +580,15 @@ class MainWindow(QMainWindow):
     def autoscalerraxis(self):
         self.resistanceplot.autoRange()
         self.resistanceplot.enableAutoRange()  
+
+    def clearrecords(self):
+        file_paths = [entry.path for entry in os.scandir(self.savepath.text()) if entry.is_file()]
+        for f in file_paths:
+            if ".csv" in f:
+                os.remove(f)
+        self.prevlist.clear()
+        if os.path.isdir(self.savepath.text()):         
+            self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
 
     def countmiddlevalues(self):
             self.middlefrequency.setText(str(sum(self.frequencyy) / len(self.frequencyy)))
