@@ -30,6 +30,7 @@ import pandas as pd
 from datetime import datetime
 import pytz
 from PySide6 import QtGui, QtCore
+import pyqtgraph
 
 
 class FrequencyAxisItem(AxisItem):
@@ -47,6 +48,7 @@ class FrequencyAxisItem(AxisItem):
 
 class MainWindow(QMainWindow):
     filepath=""
+    prevstate = False
 
     def __init__(self) -> None:
         '''
@@ -206,14 +208,21 @@ class MainWindow(QMainWindow):
         self.resistanceplot.autoPixelRange
         self.resistancex = []
         self.resistancey = []
+        self.avgresistancey = []
         self.resistanceline = self.resistanceplot.plot(self.resistancex,self.resistancey)
+        self.pen = pyqtgraph.mkPen(color=(0, 50, 205))
+        self.averageresistanceline = self.resistanceplot.plot(self.resistancex,self.resistancey, pen = self.pen)
+
         
         self.frequencyplot = PlotWidget(axisItems={'bottom':DateAxisItem(),'left': FrequencyAxisItem(orientation='left')})
         self.frequencyplot.showGrid(x=True,y=True)
         self.frequencyplot.setTitle('Frequency [Hz]')
         self.frequencyx = []
         self.frequencyy = []
+        self.avgfrequencyy = []
+        self.pen = pyqtgraph.mkPen(color=(0, 50, 205))
         self.frequencyline = self.frequencyplot.plot(self.frequencyx,self.frequencyy)    
+        self.averagefrequencyline = self.frequencyplot.plot(self.frequencyx,self.frequencyy, pen = self.pen)
 
         plotlayout = QHBoxLayout()
         plotlayout.addWidget(self.frequencyplot)
@@ -457,10 +466,7 @@ class MainWindow(QMainWindow):
             self.mainscheduler.LOST = False
         x = time.time()
         self.frequencyx.append(x)
-        if self.devfrequencyselect.isChecked() and len(self.portantfrequencyvalue.text())>0:
-            self.frequencyy.append(qcmfrequency-float(self.portantfrequencyvalue.text()))
-        else:
-            self.frequencyy.append(qcmfrequency)
+        self.adjustGraph(qcmfrequency)
         self.frequencyx = self.frequencyx[max(len(self.frequencyx)-1000,0):1000]
         self.frequencyy = self.frequencyy[max(len(self.frequencyy)-1000,0):1000]
         self.frequencyline.setData(self.frequencyx,self.frequencyy)
@@ -471,7 +477,19 @@ class MainWindow(QMainWindow):
         self.resistanceline.setData(self.resistancex,self.resistancey)
         self.countmiddlevalues()
 
-
+    def adjustGraph(self, qcmfrequency):
+        if self.devfrequencyselect.isChecked() and len(self.portantfrequencyvalue.text())>0:
+            if self.prevstate == False:
+                for i in range(0, len(self.frequencyy)):
+                    self.frequencyy[i] = self.frequencyy[i]-float(self.portantfrequencyvalue.text())
+            self.frequencyy.append(qcmfrequency-float(self.portantfrequencyvalue.text()))
+            self.prevstate = True
+        else:
+            if self.prevstate == True:
+                for i in range(0, len(self.frequencyy)):
+                    self.frequencyy[i] = self.frequencyy[i]+float(self.portantfrequencyvalue.text())
+            self.frequencyy.append(qcmfrequency)
+            self.prevstate = False
 
     def fpgasignallost(self) -> None:
         self.measurelabel.setText('Recovering input signal...')
@@ -591,8 +609,15 @@ class MainWindow(QMainWindow):
             self.prevlist.addItems([os.path.basename(x) for x in glob.glob(f"{self.savepath.text()}/*.csv")])
 
     def countmiddlevalues(self):
-            self.middlefrequency.setText(str(sum(self.frequencyy) / len(self.frequencyy)))
-            self.middleresistance.setText(str(sum(self.resistancey) / len(self.resistancey)))
+            avgres = sum(self.resistancey) / len(self.resistancey)
+            avgfr = sum(self.frequencyy) / len(self.frequencyy)
+            self.middlefrequency.setText(str(avgfr))
+            self.middleresistance.setText(str(avgres))
+            self.avgfrequencyy.append(avgfr)
+            self.averagefrequencyline.setData(self.frequencyx,self.avgfrequencyy)
+            self.avgresistancey.append(avgres)
+            self.averageresistanceline.setData(self.resistancex,self.avgresistancey)
+
 
 
 
