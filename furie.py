@@ -1,5 +1,6 @@
 import getopt
 import math
+import os
 import sys
 import threading
 from keras import Sequential
@@ -12,9 +13,10 @@ import time
 from keras.layers import LSTM
 import json
 from sklearn.model_selection import train_test_split
-from scipy.fft import fft, fftfreq
+from scipy.fft import fft, fftfreq, fftshift
 from scipy.signal.windows import blackman
-
+import psutil
+import scipy
 
 # BLOCK TO GENERATE INPUT SIGNAL
 M = 100000  # Number of sequences
@@ -38,39 +40,6 @@ label = []
 data = []
 signals = []
 
-
-## PREPARE SIGNAL SIMULATED DATA
-def prepare_signal_simulation(timerange, values, koeff, showplot=0):
-    global label
-    global data
-    global signals
-
-    tau = taumin + (taumax - taumin) * koeff
-    f0 = fmin + (fmax - fmin) * koeff
-    # Creating vectors of time and values
-    t = numpy.linspace(0, timerange, values)
-    signal = numpy.multiply(numpy.exp(-t / tau), numpy.cos(2 * numpy.pi * f0 * t))
-    signal = numpy.multiply(2, numpy.cos(2 * numpy.pi * f0 * t))
-
-    # Get DFT with python fft library
-    signal_f = fft(signal)
-    t_f = fftfreq(values, timerange)[: values // 2]
-
-    if showplot == 1:
-        pyplot.plot(t, signal, "-r")
-        pyplot.legend([f"real graph"])
-        pyplot.grid()
-        pyplot.show()
-        pyplot.plot(t_f, (signal_f[: values // 2]), "-b")
-        pyplot.legend(["fft"])
-        pyplot.grid()
-        pyplot.show()
-
-
-# END OF THE BLOCK TO GENERATE INPUT SIGNAL
-
-# FFT SECTION
-
 ## DEFINE AVAILABLE ENTRANCE PARAMETERS
 lock = threading.Lock()
 ths = []
@@ -86,85 +55,146 @@ Rq = 1  # piezoelectric material resistance (Ohm)
 Cq = 1  # piezoelectric material capacitance (Farad)
 Lq = 1  # piezoelectric material inductance ()
 B = Vex / Rq
-
-fs = (
-    []
-)  # measured quartz resonant frequency (Hz) (measurement occurs every K acquisitions)
-ffttaumax = []  # measured tau (measurement occurs every K acquisitions)
-
-finalsequence = []
-checksequence = []
+ffttaumax = taumax
+fs = 1100
 
 
-# service function to load fs and taus from input file array
-def getResonantFrequencyAndTau():
-    global fs
-    global ffttaumax
-    f = open("tauandfs.json")
-    data = json.load(f)
-    fs = data["fs"]
-    ffttaumax = data["tau"]
-    print(fs)
-    print(ffttaumax)
+def get_magnitude(signal_f):
+    magnitude = []
+    for s in signal_f:
+        dft1_real = numpy.real(s)
+        dft1_imag = numpy.imag(s)
+        m = numpy.sqrt((dft1_real * dft1_real) + (dft1_imag * dft1_imag))
+        magnitude.append(m)
+    return magnitude
 
 
-# function to prepare outcome matrix
-def prepareoutputmatrix():
-    global finalsequence
-    global checksequence
-    f = []
-    for i in range(0, N):
-        f.append(0)
-    for i in range(0, len(fs)):
-        finalsequence.append(f)
-        checksequence.append(f)
+def get_transform_frequencies(signal, timerange, values):
+    # Discrete Fourier Transform sample frequencies for manual plot
+    return fftfreq(timerange, signal)[: values // 2]
+
+
+def show_plot(t_f, signal_f, magnitude, cnt, tau, f0):
+    pyplot.plot(t_f, (signal_f[:cnt]), "-b")
+    pyplot.legend([f"fft transformation. tau:{tau} f0:{f0}."])
+    pyplot.grid()
+    pyplot.show()
+    pyplot.plot(t_f, (magnitude[:cnt]), "-b")
+    pyplot.legend([f"magnitude spectrum. tau:{tau} f0:{f0}."])
+    pyplot.grid()
+    pyplot.show()
+    # plotting the magnitude spectrum of the signal
+    pyplot.magnitude_spectrum(signal_f, color="green")
+    pyplot.title("Magnitude Spectrum of the Signal")
+    pyplot.show()
+
+
+## PREPARE SIGNAL SIMULATED DATA
+def auto_fft_transform(timerange, values, tau, f0, showplot=0):
+    global label
+    global data
+    global signals
+
+    prev = psutil.cpu_percent()
+    # Creating vectors of time and values
+    t = numpy.linspace(0, timerange, values)
+    signal = numpy.multiply(numpy.exp(-t / tau), numpy.cos(2 * numpy.pi * f0 * t))
+    # Get DFT with python scipy library
+    signal_f = fft(signal)
+    t_f = get_transform_frequencies(signal_f, timerange, values)
+    magnitude = get_magnitude(signal_f)
+    mem = sys.getsizeof(magnitude)
+    act = psutil.cpu_percent()
+    increase = 0
+    if act > prev:
+        increase = act - prev
+    print(
+        f"Scipy DFT and magintude extraction get: virtual memory used to store fft array: {mem} bytes, cpu load increase:{increase}"
+    )
+    # Get DFT manually
+    if showplot == 1:
+        pyplot.plot(t, signal, "-r")
+        pyplot.legend([f"real graph tau:{tau} f0:{f0}"])
+        pyplot.grid()
+        pyplot.show()
+        show_plot(t_f, signal_f, magnitude, (values // 2), tau, f0)
+
+
+## PREPARE SIGNAL SIMULATED DATA
+def manual_fft_transform(timerange, values, tau, T, showplot=0):
+    global label
+    global data
+    global signals
+
+    signal = []
+    prev = psutil.cpu_percent()
+
+    t = numpy.linspace(0, timerange, values)
+    for i in t:
+        signal.append(
+            B
+            * math.pow((math.e), (-i * T / ffttaumax))
+            * math.cos(2 * math.pi * fss * i * T)
+        )
+    magnitude = get_magnitude(signal)
+    # Get DFT with python scipy library
+    act = psutil.cpu_percent()
+    mem = sys.getsizeof(signal)
+    increase = 0
+    if act > prev:
+        increase = act - prev
+    print(
+        f"Manual DFT and magintude extraction get: virtual memory used to store fft array: {mem}bytes, cpu load increase:{increase}"
+    )
+
+    # Get DFT manually
+    if showplot == 1:
+        show_plot(t, signal, magnitude, (values), tau, f0)
+
+
+# END OF THE BLOCK TO GENERATE INPUT SIGNAL
 
 
 # function to get Furie sequence for one measurement interval for fs and tau
 def createonesequence(num):
     global fs
-    global finalsequence
-    global checksequence
     global ths
-    try:
-        lock.acquire()
-        ths.append(1)
-        lock.release()
-        sequence = []
-        yf = []
-        fss = fs[num] - fb
-        Ts = 1 / fs[num]
-        for i in range(0, N):
-            y = B * math.pow((math.e), (i / ffttaumax[num])) * math.cos(2 * math.pi * i)
-            I = (
-                B
-                * math.pow((math.e), (-i * Ts / ffttaumax[num]))
-                * math.cos(2 * math.pi * fss * i * Ts)
-            )
-            sequence.append(I)
-            yf.append(y)
-        lock.acquire()
-        checksequence.insert(num, yf)
-        finalsequence.insert(num, sequence)
-        ths.pop()
-        lock.release()
-    except Exception as e:
-        print(f"Exception in thread {num}: {e}")
 
 
 # END OF FFT SECTION
 
 
 def main(argv):
-    global finalsequence
     global fs
     global ths
-    prepare_signal_simulation(3, 300, 1000, 1)
-    # getResonantFrequencyAndTau()
-    # prepareoutputmatrix()
-    for i in range(0, K):
-        thread = threading.Thread(target=createonesequence, args=(i,))
-        # thread.start()
+
+    argv = sys.argv[1:]
+    opts = [opt for opt in sys.argv[1:] if opt.startswith("-")]
+    args = [arg for arg in sys.argv[1:] if not arg.startswith("-")]
+    print(args)
+    tau = 0.0
+    f = 0.0
+    T = 0
+    for i in range(0, len(opts)):
+        try:
+            if opts[i] == "-h":
+                print("test.py -i <inputfile> -o <outputfile>")
+                sys.exit()
+            elif opts[i] == "-t":
+                tau = float(args[i])
+            elif opts[i] in ("-f", "--f0"):
+                f = float(args[i])
+                T = 1 / f
+            elif opts[i] in ("-p", "--period"):
+                T = float(args[i])
+        except Exception:
+            continue
+    auto_fft_transform(1, 300, tau, f, 1)
+    manual_fft_transform(1, 300, tau, T, 1)
+
+    # for i in range(0, K):
+    #    thread = threading.Thread(target=createonesequence, args=(i,))
+    #    thread.start()
     # while len(ths) > 1:
     #    time.sleep(1)
     # for i in finalsequence:
