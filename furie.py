@@ -18,32 +18,13 @@ from scipy.signal.windows import blackman
 import psutil
 import scipy
 
-# BLOCK TO GENERATE INPUT SIGNAL
-M = 100000  # Number of sequences
+## DEFINE AVAILABLE ENTRANCE PARAMETERS
 taumin = 40e-6  # Minimum time constant
 taumax = 300e-6  # Maximum time constant
 fmin = 8e3  # Minimum frequency (can be set from 8e3 to 48e3)
 fmax = fmin + 4e3  # Maximum frequency
-samples_per_period = 100  # Nominal number of samples per period (editable)
-fc = samples_per_period * fmax  # Sampling frequency
-W = 5 * taumin  # Observation window
-## COMPUTE THE TIME CONSTANTS AND FREQUENCIES
-tau = taumin + (taumax - taumin)
-f0 = fmin + (fmax - fmin)
-
-## CREATE THE TIME ARRAY
-N = numpy.floor(W * fc)
-t = 1 / fc * numpy.arange(0, N - 1, 1)
-
-## BUILD THE DATASET
-label = []
-data = []
-signals = []
-
-## DEFINE AVAILABLE ENTRANCE PARAMETERS
 lock = threading.Lock()
 ths = []
-N = 100  # number of values in sequence
 fex = 1000  # excitation frequency (Hz)
 K = 10  # the number of acquisitions
 fb = 1000  # local oscillator frequency (Hz)
@@ -69,9 +50,9 @@ def get_magnitude(signal_f):
     return magnitude
 
 
-def get_transform_frequencies(signal, timerange, values):
+def get_transform_frequencies(timerange, values):
     # Discrete Fourier Transform sample frequencies for manual plot
-    return fftfreq(timerange, signal)[: values // 2]
+    return fftfreq(values, timerange / values)[: values // 2]
 
 
 def show_plot(t_f, signal_f, magnitude, cnt, tau, f0):
@@ -82,10 +63,6 @@ def show_plot(t_f, signal_f, magnitude, cnt, tau, f0):
     pyplot.plot(t_f, (magnitude[:cnt]), "-b")
     pyplot.legend([f"magnitude spectrum. tau:{tau} f0:{f0}."])
     pyplot.grid()
-    pyplot.show()
-    # plotting the magnitude spectrum of the signal
-    pyplot.magnitude_spectrum(signal_f, color="green")
-    pyplot.title("Magnitude Spectrum of the Signal")
     pyplot.show()
 
 
@@ -99,9 +76,9 @@ def auto_fft_transform(timerange, values, tau, f0, showplot=0):
     # Creating vectors of time and values
     t = numpy.linspace(0, timerange, values)
     signal = numpy.multiply(numpy.exp(-t / tau), numpy.cos(2 * numpy.pi * f0 * t))
-    # Get DFT with python scipy library
+    # signal = numpy.cos(2 * numpy.pi * f0 * t)
     signal_f = fft(signal)
-    t_f = get_transform_frequencies(signal_f, timerange, values)
+    t_f = get_transform_frequencies(timerange, values)
     magnitude = get_magnitude(signal_f)
     mem = sys.getsizeof(magnitude)
     act = psutil.cpu_percent()
@@ -178,7 +155,9 @@ def main(argv):
     for i in range(0, len(opts)):
         try:
             if opts[i] == "-h":
-                print("test.py -i <inputfile> -o <outputfile>")
+                print(
+                    "entrance arguments: -t tau, -f frequency -p period. In case -p is not provided period calculated as 1/f"
+                )
                 sys.exit()
             elif opts[i] == "-t":
                 tau = float(args[i])
@@ -189,18 +168,19 @@ def main(argv):
                 T = float(args[i])
         except Exception:
             continue
-    auto_fft_transform(1, 300, tau, f, 1)
+    auto_fft_transform(1, 1000000, tau, f, 1)
     manual_fft_transform(1, 300, tau, T, 1)
 
-    # for i in range(0, K):
-    #    thread = threading.Thread(target=createonesequence, args=(i,))
-    #    thread.start()
-    # while len(ths) > 1:
-    #    time.sleep(1)
-    # for i in finalsequence:
-    #    pyplot.plot(i)
-    # pyplot.show()
-    # print(finalsequence)
+
+# for i in range(0, K):
+#    thread = threading.Thread(target=createonesequence, args=(i,))
+#    thread.start()
+# while len(ths) > 1:
+#    time.sleep(1)
+# for i in finalsequence:
+#    pyplot.plot(i)
+# pyplot.show()
+# print(finalsequence)
 
 
 if __name__ == "__main__":
