@@ -124,7 +124,7 @@ def run_manual_dft(timerange, values, tau, f):
     dft = numpy.zeros((values,), dtype=numpy.complex128)
     koef = (1j * 2 * numpy.pi) / values
     t = 0
-    manual_fourie = numpy.vectorize(manual_ft)
+    manual_fourie = numpy.vectorize(manual_ft, otypes=[float])
     dft = manual_fourie(signal)
     print(len(dft))
     magnitude = get_magnitude(dft)
@@ -134,90 +134,12 @@ def run_manual_dft(timerange, values, tau, f):
 def manual_ft(s):
     global koef
     global cnt
-    t = numpy.linspace(0, cnt, 1)
-    numpy.sum(numpy.multiply(s, numpy.exp(numpy.multiply(koef, cnt, t))))
+    t = numpy.linspace(0, cnt, cnt)
+    k = numpy.multiply(cnt, t)
+    out = numpy.sum(numpy.multiply(s, numpy.exp(numpy.multiply(koef, k))))
+    print(cnt)
     cnt = cnt + 1
-
-
-def manual_dft(*koef):
-    global M
-    global dft
-    global threads
-    global signal
-    while M > 0:
-        lock.acquire()
-        M = M - 1
-        print(f"starting sequence for {M}")
-        lock.release()
-        dl = numpy.sum(numpy.multiply(signal[M], numpy.exp(koef * M)))
-        dft[M] = dl
-
-
-def do_manual_dft(values, tau, f):
-    global M
-    global dft
-    global threads
-    while M > 0:
-        lock.acquire()
-        M = M - 1
-        print(f"starting sequence for {M}")
-        lock.release()
-        d = 0.0
-        for i in range(0, values):
-            dl = (2 * numpy.pi * i * M) / (values)
-            d += numpy.multiply(signal[i], numpy.exp(-1j * dl))
-        lock.acquire()
-        dft[M] = d
-        print(f"processed sequence for {M}")
-        lock.release()
-    lock.acquire()
-    threads = threads - 1
-    lock.release()
-    print("Thread finished")
-    if threads <= 1:
-        magnitude = get_magnitude(dft)
-        pyplot.plot(t_f, dft, "-r")
-        pyplot.legend([f"real graph tau:{tau} f0:{f}"])
-        pyplot.grid()
-        pyplot.show()
-        show_plot(t_f, dft, magnitude, values, tau, f)
-
-
-def manual_fft_transform(timerange, values, tau, f, showplot=0):
-    global signal
-    global t_f
-
-    dft = []
-    prev = psutil.cpu_percent()
-    d = 0.0
-    t = numpy.linspace(0, timerange, values)
-    signal = numpy.multiply(numpy.exp(-t / tau), numpy.cos(2 * numpy.pi * f * t))
-    t_f = get_transform_frequencies(timerange, values)
-    dft = numpy.zeros((values,), dtype=numpy.complex128)
-    for m in range(0, values):
-        print(m)
-        d = 0.0
-        for i in range(0, values):
-            dl = (2 * numpy.pi * i * m) / (values)
-            d += numpy.multiply(signal[i], numpy.exp(-1j * dl))
-        dft[m] = d
-    magnitude = get_magnitude(dft)
-    # Get DFT with python scipy library
-    act = psutil.cpu_percent()
-    mem = sys.getsizeof(magnitude)
-    increase = 0
-    if act > prev:
-        increase = act - prev
-    print(
-        f"Manual DFT and magintude extraction get: virtual memory used to store fft array: {mem}bytes, cpu load increase:{increase}"
-    )
-    # Get DFT manually
-    if showplot == 1:
-        pyplot.plot(t_f, dft, "-r")
-        pyplot.legend([f"real graph tau:{tau} f0:{f}"])
-        pyplot.grid()
-        pyplot.show()
-        show_plot(t_f, dft, magnitude, (values // 2), tau, f)
+    return out
 
 
 # END OF THE BLOCK TO GENERATE INPUT SIGNAL
