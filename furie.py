@@ -24,7 +24,6 @@ taumax = 300e-6  # Maximum time constant
 fmin = 8e3  # Minimum frequency (can be set from 8e3 to 48e3)
 fmax = fmin + 4e3  # Maximum frequency
 lock = threading.Lock()
-ths = []
 fex = 1000  # excitation frequency (Hz)
 K = 10  # the number of acquisitions
 fb = 1000  # local oscillator frequency (Hz)
@@ -38,12 +37,10 @@ Lq = 1  # piezoelectric material inductance ()
 B = Vex / Rq
 ffttaumax = taumax
 fs = 1100
-threads = 0
 dft = []
-M = 0
 signal = []
 t_f = []
-koef = 0
+koef = []
 t = []
 cnt = 0
 
@@ -105,41 +102,45 @@ def auto_fft_transform(timerange, values, tau, f0, showplot=0):
         show_plot(t_f, signal_f, magnitude, (values // 2), tau, f0)
 
 
-## PREPARE SIGNAL SIMULATED DATA
-def run_manual_dft(timerange, values, tau, f):
+# PREPARE MANUAL DFT TRANSFORM
+def dft_transform(timerange, values, tau, f):
     global signal
     global t_f
     global dft
-    global threads
-    global M
     global koef
     global t
     global cnt
-    M = values
     prev = psutil.cpu_percent()
-    d = 0.0
     t = numpy.linspace(0, timerange, values)
+    k = numpy.linspace(0, values - 1, values)
+    print(k)
     signal = numpy.multiply(numpy.exp(-t / tau), numpy.cos(2 * numpy.pi * f * t))
     t_f = get_transform_frequencies(timerange, values)
-    dft = numpy.zeros((values,), dtype=numpy.complex128)
-    koef = (1j * 2 * numpy.pi) / values
-    t = 0
-    manual_fourie = numpy.vectorize(manual_ft, otypes=[float])
-    dft = manual_fourie(signal)
-    print(len(dft))
+    koef = numpy.multiply(((1j * 2 * numpy.pi) / values), k)
+    manual_fourie = numpy.vectorize(manual_ft_2)
+    dft = manual_fourie(k)
     magnitude = get_magnitude(dft)
-    show_plot(t_f, dft, magnitude, values, tau, f)
+    show_plot(t_f, dft, magnitude, int(values // 2), tau, f)
 
 
-def manual_ft(s):
+def manual_ft_1(s, t):
     global koef
     global cnt
-    t = numpy.linspace(0, cnt, cnt)
-    k = numpy.multiply(cnt, t)
-    out = numpy.sum(numpy.multiply(s, numpy.exp(numpy.multiply(koef, k))))
-    print(cnt)
+    out = numpy.multiply(s, numpy.exp(numpy.multiply(t, cnt)))
+    retval = numpy.sum(out)
+    return retval
+
+
+def manual_ft_2(k):
+    global signal
+    global koef
+    global cnt
+    global dft
+    manual_fourie = numpy.vectorize(manual_ft_1)
+    retval = numpy.sum(manual_fourie(signal, koef))
     cnt = cnt + 1
-    return out
+    print(cnt)
+    return retval
 
 
 # END OF THE BLOCK TO GENERATE INPUT SIGNAL
@@ -175,19 +176,9 @@ def main(argv):
                 T = float(args[i])
         except Exception:
             continue
-    # auto_fft_transform(1, 1000000, tau, f, 1)
-    run_manual_dft(1, 100000, tau, f)
-
-
-# for i in range(0, K):
-#    thread = threading.Thread(target=createonesequence, args=(i,))
-#    thread.start()
-# while len(ths) > 1:
-#    time.sleep(1)
-# for i in finalsequence:
-#    pyplot.plot(i)
-# pyplot.show()
-# print(finalsequence)
+    # auto_fft_transform(1, 6000, tau, f, 1)
+    # run_manual_dft(1, 6000, tau, f)
+    dft_transform(1, 15000, tau, f)
 
 
 if __name__ == "__main__":
