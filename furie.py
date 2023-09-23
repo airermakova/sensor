@@ -23,7 +23,6 @@ taumin = 40e-6  # Minimum time constant
 taumax = 300e-6  # Maximum time constant
 fmin = 8e3  # Minimum frequency (can be set from 8e3 to 48e3)
 fmax = fmin + 4e3  # Maximum frequency
-lock = threading.Lock()
 fex = 1000  # excitation frequency (Hz)
 K = 10  # the number of acquisitions
 fb = 1000  # local oscillator frequency (Hz)
@@ -123,23 +122,14 @@ def dft_transform(timerange, values, tau, f):
     show_plot(t_f, dft, magnitude, int(values // 2), tau, f)
 
 
-def manual_ft_1(s, t):
-    global koef
-    global cnt
-    out = numpy.multiply(s, numpy.exp(numpy.multiply(t, cnt)))
-    retval = numpy.sum(out)
-    return retval
-
-
 def manual_ft_2(k):
     global signal
     global koef
     global cnt
     global dft
-    manual_fourie = numpy.vectorize(manual_ft_1)
-    retval = numpy.sum(manual_fourie(signal, koef))
-    cnt = cnt + 1
-    print(cnt)
+    out = numpy.multiply(signal, numpy.exp(numpy.multiply(koef, k)))
+    retval = numpy.sum(out)
+    print(k)
     return retval
 
 
@@ -177,8 +167,7 @@ def main(argv):
         except Exception:
             continue
     # auto_fft_transform(1, 6000, tau, f, 1)
-    # run_manual_dft(1, 6000, tau, f)
-    dft_transform(1, 15000, tau, f)
+    dft_transform(1, 150000, tau, f)
 
 
 if __name__ == "__main__":
