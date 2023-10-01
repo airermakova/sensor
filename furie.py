@@ -18,23 +18,7 @@ from scipy.signal.windows import blackman
 import psutil
 import scipy
 
-## DEFINE AVAILABLE ENTRANCE PARAMETERS
-taumin = 40e-6  # Minimum time constant
-taumax = 300e-6  # Maximum time constant
-fmin = 8e3  # Minimum frequency (can be set from 8e3 to 48e3)
-fmax = fmin + 4e3  # Maximum frequency
-fex = 1000  # excitation frequency (Hz)
-K = 10  # the number of acquisitions
-fb = 1000  # local oscillator frequency (Hz)
-Tburst = 10  # excitation burst duration (ms)
-fss = 100  # mixed signal frequency (Hz)
-ffttaumin = Tburst / 2  # minimum tau
-Vex = 10  # excitation voltage (Volts)
-Rq = 1  # piezoelectric material resistance (Ohm)
-Cq = 1  # piezoelectric material capacitance (Farad)
-Lq = 1  # piezoelectric material inductance ()
-B = Vex / Rq
-ffttaumax = taumax
+## ARRAYS TO GET FOURIER TRANSFORM
 fs = 1100
 dft = []
 signal = []
@@ -42,6 +26,134 @@ t_f = []
 koef = []
 t = []
 cnt = 0
+# VALUES DEFINED
+tc = 1 / 1e6
+tau = 70e-6
+ndft = 4000
+f00 = 50e3
+Vmax = 0.5
+freq = [0] * 20
+freq2 = [0] * 20
+meanfreq = [0] * 10
+meanfreq2 = [0] * 10
+meanmeanfreq = [0] * 20
+stdmeanfreq = [0] * 20
+meanmeanfreq2 = [0] * 20
+stdmeanfreq2 = [0] * 20
+meanf = [0] * 20
+stdfreq = [0] * 20
+meanf2 = [0] * 20
+stdfreq2 = [0] * 20
+f0v = [0] * 20
+
+n = numpy.minimum(math.floor(5 * tau / tc), ndft)
+t = numpy.multiply(numpy.linspace(0, n - 1, n - 1), tc)
+noise = [1e-3, 5e-3, 2e-2, 1e-1]
+
+for kplot in range(1, 4):
+    Vmax = 0.5
+    for kk in range(1, 20):
+        f0 = f00 + (kk - 10) * 250 / 20 + 3.333
+        zeta = 1 / tau / 2 / numpy.pi / f0
+        f0v[kk]=f0
+        fas = (
+            tc * f0 * 2 * numpy.pi
+        )  # errore di fase dovuto alla determinazione del picco
+        v = numpy.multiply(
+            Vmax,
+            numpy.exp(-t / tau),
+            numpy.sin(2 * numpy.pi * f0 * t + fas * (numpy.random(1) - 0.5) * 0),
+        )
+        Spower = numpy.sum(numpy.power(v, 2)) / n
+        for j in range(1, 20):
+            for i in range(1, 20):
+                vv = v + numpy.random.randn(1, n) * Vmax * noise[kplot]
+                Npower = Vmax * noise[kplot]
+                nn = ndft - n
+                rn = nn + i
+                vl = [vv, numpy.zeros(rn - 1)]
+                v2 = [vv, numpy.zeros(nn - 1)]
+                v1 = v1 + 1.5
+                v2 = v2 + 1.5
+                V = fft(vl - numpy.mean(vl))
+                V2 = fft(v2 - numpy.mean(v2))
+                vm = vl - numpy.mean(vl)
+                vm2 = v2 - numpy.mean(v2)
+                NN = len(vl)
+                for fk in range(1, len(NN)):
+                    for ti in range(1, len(NN)):
+                        V[fk] = numpy.sum(
+                            vm[ti] * numpy.cos(ti * fk * 2 * numpy.pi / NN)
+                        ) + j * numpy.sum(
+                            vm(ti) * numpy.sin(ti * fk * 2 * numpy.pi / NN)
+                        )
+                        V2[fk] = numpy.sum(
+                            vm2[ti] * numpy.cos(ti * fk * 2 * numpy.pi / NN)
+                        ) + j * numpy.sum(
+                            vm2(ti) * numpy.sin(ti * fk * 2 * numpy.pi / NN)
+                        )
+                ini = 1
+                a = numpy.max(
+                    numpy.abs(numpy.power(V[ini : math.floor((n + rn) / 2)], 2))
+                )
+                b = numpy.max(
+                    numpy.abs(numpy.power(V[ini : math.floor((n + rn) / 2)], 2))
+                )
+                a2 = numpy.max(
+                    numpy.abs(numpy.power(V[ini : math.floor((n + nn / 2) / 2)], 2))
+                )
+                b2 = numpy.max(
+                    numpy.abs(numpy.power(V2[ini : math.floor((n + nn / 2) / 2)], 2))
+                )
+                f = numpy.multiply(numpy.linspace(0, n + rn, n + rn), 1 / tc / (n + rn))
+                f2 = numpy.multiply(
+                    numpy.linspace(0, n + nn, n + nn), 1 / tc / (n + nn)
+                )
+                freq[i] = (
+                    f(b + ini - 1)
+                    / numpy.sqrt(1 - 2 * zeta ^ 2)
+                    * numpy.sqrt(1 - zeta ^ 2)
+                    - f0
+                )
+                freq2[i] = (
+                    f2(b2 + ini - 1)
+                    / numpy.sqrt(1 - 2 * zeta ^ 2)
+                    * numpy.sqrt(1 - zeta ^ 2)
+                    - f0
+                )
+                # cos
+                freq[i] = f(b + ini - 1) * numpy.sqrt(1 - 0 * zeta ^ 2) - f0
+                freq2[i] = f2(b2 + ini - 1) * numpy.sqrt(1 - 0 * zeta ^ 2) - f0
+            SNR = 10 * numpy.log10(Spower / Npower)
+            meanfreq[j] = numpy.mean(freq)
+            meanfreq2[j] = numpy.mean(freq2)
+        meanmeanfreq[kk] = numpy.mean(meanfreq)
+        stdmeanfreq[kk] = numpy.std(meanfreq)
+        meanmeanfreq2[kk] = numpy.mean(meanfreq2)
+        stdmeanfreq2[kk] = numpy.std(meanfreq2)
+        meanf[kk] = numpy.mean(freq)
+        stdfreq[kk] = numpy.std(freq)
+        meanf2[kk] = numpy.mean(freq2)
+        stdfreq2[kk] = numpy.std(freq2)
+    subplot(2,2,kplot)
+    title(['SNR =',num2str(SNR), 'dB'])
+    plot(f0v-f00*0,meanmeanfreq,'-+',f0v-f00*0,meanmeanfreq2,'-d')
+    xlabel('f''_s (Hz)')
+    ylabel ('mean(\Delta_f) (Hz)')
+    legend( 'variable','fixed')
+    title(['SNR =',num2str(SNR), 'dB'])
+    hold on
+    drawnow
+    figure(32)
+    subplot(2,2,kplot)
+    title(['SNR =',num2str(SNR), 'dB'])
+    %subplot(212)
+    plot(f0v-f00*0,stdmeanfreq,'-+',f0v-f00*0,stdmeanfreq2,'-d')
+    drawnow
+    legend( 'variable','fixed')
+    xlabel('f''_s (Hz)')
+    ylabel ('STD(\Delta_f)(Hz)')
+    title(['SNR =',num2str(SNR), 'dB'])
 
 
 def get_magnitude(signal_f):
